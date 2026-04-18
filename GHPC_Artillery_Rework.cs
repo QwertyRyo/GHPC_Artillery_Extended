@@ -9,7 +9,7 @@ using System.Reflection;
 using GHPC.UI.Map;
 using UnityEngine.UI;
 
-[assembly: MelonInfo(typeof(GHPC_Artillery_Rework.GHPC_Arty_Class), "GHPC Artillery Rework", "1.2.2", "Qwertyryo")]
+[assembly: MelonInfo(typeof(GHPC_Artillery_Rework.GHPC_Arty_Class), "GHPC Artillery Rework", "1.0.0", "Qwertyryo")]
 [assembly: MelonGame("Radian Simulations LLC", "GHPC")]
 
 namespace GHPC_Artillery_Rework
