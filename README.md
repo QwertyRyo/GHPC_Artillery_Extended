@@ -1,6 +1,6 @@
 # GHPC_Artillery_Rework for Gunner HEAT PC!
 
-Version 1.0.0 of the GHPC Artillery Rework mod in Gunner HEAT PC. 
+Version 1.2.1 of GHPC_Artillery_Rework in Gunner HEAT PC. 
 
 Your ammo UI will now show (X+Y+Z), where X is the amount of rounds in your current clip/breech, Y is the amount of rounds in your ready rack, and Z is the amount of rounds you have in storage. This can be useful in determining how much ammo you have in total to work with. 
 
