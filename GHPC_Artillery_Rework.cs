@@ -31,7 +31,7 @@ namespace GHPC_Artillery_Rework {
 
       volume = cfg.CreateEntry<int>("Artillery volume multiplier", 1);
       volume.Comment =
-          "Set the volume multiplier for artillery rounds. 1 is default, 2 is double the amount of shells, etc. Supports integers from 1 to 15.";
+          "Set the volume multiplier for artillery rounds. 1 is default, 2 is double the amount of shells, etc. Supports integers from 1 to 15, but not great for your PC past 5.";
 
       timeToTargetMultipler =
           cfg.CreateEntry<int>("Time to target multiplier", 1);
