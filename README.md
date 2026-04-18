@@ -1,12 +1,21 @@
 # GHPC_Artillery_Rework for Gunner HEAT PC!
 
 Version 1.0.0 of GHPC_Artillery_Rework in Gunner HEAT PC. 
+Features:
+- Allows users to increase the volume of artillery fire, decrease time it takes for shells to land and increase artillery accuracy.
+- Allows users to cancel fire missions early by clicking on the associated fire mission button.
+- Adds in a HUD warning of inbound artillery with randomized voicelines.
 
-Blank
+
+Planned Content:
+- Will allow users to customize artillery and smoke separately.
+
 ***Installation***  
 This mod requires MelonLoader Version 0.6.1.
 
 To install, download the "GHPC_Artillery_Rework.dll" file from releases and put it into the /mods folder. 
+
+Run the game to create a configuration file in the UserData folder. From there, you can edit the multipliers.
 
 ***Acknowledgements***  
 Programming: Qwertyryo
