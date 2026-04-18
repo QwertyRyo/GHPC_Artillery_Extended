@@ -9,10 +9,10 @@ Features:
 
 Planned Content:
 - Will allow users to customize artillery and smoke separately.
-- 
+  
 Known Bugs:
 - Also applies to enemy fire missions.
-- 
+  
 ***Installation***  
 This mod requires MelonLoader Version 0.6.1.
 
