@@ -180,6 +180,21 @@ namespace GHPC_Artillery_Rework
             }
 
             EnsureReporterFields(reporter.GetType());
+            // Guard: only cancel if the battery is actually mid-mission.
+// Otherwise this is a normal click (aim new barrage) — let the original run.
+bool  curFiring  = (bool) (_isFiringBF?.GetValue(reporter) ?? false);
+float curDelay   = (float)(_remainingDelayBF?.GetValue(reporter) ?? 0f);
+float curImpact  = (float)(_timeUntilImpactBF?.GetValue(reporter) ?? 0f);
+
+if (!curFiring && curDelay <= 0f && curImpact <= 0f)
+{
+    // Battery is idle — stale store entry. Clean up and run original.
+    MelonLogger.Msg($"[FiringId] {fireSupportButton.SupportName}: " +
+                    $"stale store entry (battery idle), running original");
+    FiringIdStore.Remove(fireSupportButton);
+    return true;  // let the original open the deploy menu
+}
+
 
             // Pre-mutation diagnostic
             float preDelay     = (float)(_remainingDelayBF?.GetValue(reporter) ?? 0f);
