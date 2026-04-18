@@ -1,0 +1,4 @@
+C:\Program Files (x86)\Steam\steamapps\common\Gunner HEAT PC\Bin\Mods\GHPC_Artillery_Rework.dll
+C:\Users\ryans\Documents\GHPC_Modding_Stuff\GHPC_Artillery_Extended\obj\Debug\GHPC_Artillery_Rework.csproj.AssemblyReference.cache
+C:\Users\ryans\Documents\GHPC_Modding_Stuff\GHPC_Artillery_Extended\obj\Debug\GHPC_Artillery_Rework.csproj.CoreCompileInputs.cache
+C:\Users\ryans\Documents\GHPC_Modding_Stuff\GHPC_Artillery_Extended\obj\Debug\GHPC_Artillery_Rework.dll
