@@ -5,6 +5,7 @@ using System.IO;
 using GHPC.Event;
 using System.Collections.Generic;
 using System;
+using GHPC;
 using GHPC.Event.Interfaces;
 using UnityEngine;
 using System.Reflection;
@@ -23,6 +24,10 @@ namespace GHPC_Artillery_Rework {
     public static MelonPreferences_Entry<int> volume;
     public static MelonPreferences_Entry<int> timeToTargetMultipler;
     public static MelonPreferences_Entry<int> accuracyMultiplier;
+    public static MelonPreferences_Entry<int> plannedVolume;
+    public static MelonPreferences_Entry<int> plannedTimeToTargetMultipler;
+  public static MelonPreferences_Entry<int> plannedAccuracyMultiplier;
+
 
     public override void OnInitializeMelon() {
       MelonLogger.Msg("GHPC Artillery Rework initialized.");
@@ -41,6 +46,21 @@ namespace GHPC_Artillery_Rework {
       accuracyMultiplier = cfg.CreateEntry<int>("Accuracy multiplier", 1);
       accuracyMultiplier.Comment =
           "Set the multiplier for artillery accuracy. 1 is default, 2 means shells will be twice as accurate, etc. Supports integers from 1 to 10.";
+              plannedVolume = cfg.CreateEntry<int>("Planned artillery volume multiplier", 1);
+    plannedVolume.Comment = "Volume multiplier for PLANNED fire missions. " +
+                            "Supports integers from 1 to 15.";
+
+    plannedTimeToTargetMultipler = cfg.CreateEntry<int>(
+        "Planned time to target multiplier", 1);
+    plannedTimeToTargetMultipler.Comment = "Time-to-target multiplier for PLANNED " +
+                                           "fire missions. Supports integers from 1 to 10.";
+
+    plannedAccuracyMultiplier = cfg.CreateEntry<int>(
+        "Planned accuracy multiplier", 1);
+    plannedAccuracyMultiplier.Comment = "Accuracy multiplier for PLANNED fire missions. " +
+                                        "Supports integers from 1 to 10.";
+
+
       var harmony = new HarmonyLib.Harmony("GHPC_Artillery_Rework");
       harmony.PatchAll();
     }
@@ -52,6 +72,48 @@ namespace GHPC_Artillery_Rework {
       return (v < min || v > max) ? fallback : v;
     }
   }
+
+  // A thread-local holder for "the faction of the currently-executing planned fire mission"
+  public static class PlannedMissionContext
+  {
+    [ThreadStatic] private static Faction _currentFaction;
+    [ThreadStatic] private static bool _isSet;
+
+    public static void Set(Faction f) { _currentFaction = f; _isSet = true; }
+    public static void Clear()        { _currentFaction = default; _isSet = false; }
+
+    public static bool TryGet(out Faction f)
+    {
+        f = _currentFaction;
+        return _isSet;
+    }
+}
+  public static class CallerDetector
+{
+    public enum CallSource { Unknown, OnCall, Planned }
+
+public static CallSource Detect()
+{
+    var stack = new System.Diagnostics.StackTrace(false);
+    for (int i = 1; i < stack.FrameCount; i++)
+    {
+        var method = stack.GetFrame(i).GetMethod();
+        if (method == null) continue;
+
+        var declaring = method.DeclaringType?.FullName ?? "";
+
+        // Skip Harmony / MonoMod / our own patch plumbing
+        if (declaring.Contains("Harmony")) continue;
+        if (declaring.Contains("MonoMod")) continue;
+        if (declaring.StartsWith("GHPC_Artillery_Rework")) continue;
+        if (method.Name.Contains("DMD<")) continue;
+        if (method.Name == "SendFireMissionOnCall")  return CallSource.OnCall;
+        if (method.Name == "SendFireMissionPlanned") return CallSource.Planned;
+        return CallSource.Unknown;
+    }
+    return CallSource.Unknown;
+}
+}
 
   public static class FiringIdStore {
     private static readonly Dictionary<MapIconControlType, object> _store =
@@ -66,6 +128,45 @@ namespace GHPC_Artillery_Rework {
     public static void Remove(MapIconControlType btn) => _store.Remove(btn);
     public static void Clear() => _store.Clear();
   }
+
+  [HarmonyPatch]
+public static class Patch_FireMissionManager_SendFireMissionPlanned
+{
+    static MethodBase TargetMethod()
+    {
+        var type = AccessTools.TypeByName("GHPC.Weapons.Artillery.FireMissionManager");
+        if (type == null)
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type[] types;
+                try { types = asm.GetTypes(); } catch { continue; }
+                foreach (var t in types)
+                {
+                    if (t.Name == "FireMissionManager") { type = t; break; }
+                }
+                if (type != null) break;
+            }
+        }
+
+        return AccessTools.Method(type, "SendFireMissionPlanned",
+            new[] {
+                typeof(Faction), typeof(Vector3), typeof(float),
+                typeof(IndirectFireMunitionType),
+                typeof(int), typeof(float), typeof(float)
+            });
+    }
+
+    static void Prefix(Faction team)
+    {
+        PlannedMissionContext.Set(team);
+    }
+
+    static void Finalizer()
+    {
+        PlannedMissionContext.Clear();
+    }
+}
 
   [HarmonyPatch(typeof(MapIconControlType),
                 nameof(MapIconControlType.UpdateCooldownDelayResponse))]
@@ -301,53 +402,70 @@ namespace GHPC_Artillery_Rework {
     }
 
     static void Postfix(bool __result, ArtilleryBattery __instance,
-                        IndirectFireMunitionType preferredMunitions) {
-      if (!__result)
-        return;
+                    IndirectFireMunitionType preferredMunitions)
+{
+    if (!__result) return;
 
-      ResolveOnce();
-      if (_instanceProp == null || _addAlertMethod == null)
-        return;
-      var currentMunitions = (BatteryMunitionsChoice)AccessTools.Field(typeof(ArtilleryBattery), "_currentMunitions").GetValue(__instance);
-      string shell_type = "HE";
-      string random_message = new[] {
-            " This is gonna be a big one.",
-            " Stand clear.",
-            " Better plug those ears.",
-            " Clean up anyone who's left after this.",
-            " Sit back and watch the fireworks.",
-            " Those bitches have no idea what's coming.",
-            " Get some, motherfuckers!",
-            " Eat shit and die, motherfuckers!"
-        }[UnityEngine.Random.Range(0, 7)];
-      if (currentMunitions.Ammo?.AmmoType == null) {
+    ResolveOnce();
+    if (_instanceProp == null || _addAlertMethod == null) return;
+
+    var currentMunitions = (BatteryMunitionsChoice)AccessTools
+        .Field(typeof(ArtilleryBattery), "_currentMunitions").GetValue(__instance);
+
+    string shell_type = "HE";
+    string random_message = new[] {
+        " This is gonna be a big one.",
+        " Stand clear.",
+        " Better plug those ears.",
+        " Clean up anyone who's left after this.",
+        " Sit back and watch the fireworks.",
+        " Those bitches have no idea what's coming.",
+        " Get some, motherfuckers!",
+        " Eat shit and die, motherfuckers!"
+    }[UnityEngine.Random.Range(0, 8)];
+
+    if (currentMunitions.Ammo?.AmmoType == null)
+    {
         shell_type = "WP";
         random_message = "";
-      }
-      var hud = _instanceProp.GetValue(null);
-      if (hud == null)
-        return;
-      var t = __instance.GetType();
-      int shots = (int)(AccessTools.Field(t, "_currentShotQuota")
-                            ?.GetValue(__instance) ??
-                        0);
-      float impact = (float)(AccessTools.Property(t, "TimeUntilImpactSeconds")
-                                 ?.GetValue(__instance) ??
-                             0f);
+    }
 
-       
-    
+    var hud = _instanceProp.GetValue(null);
+    if (hud == null) return;
 
-      string msg =
-          $"Battalion FSO: Executing fire suppression mission — {shots} rounds {shell_type}, {(int)Math.Ceiling(impact)} seconds time to target.{random_message}";
-      try {
+    var t = __instance.GetType();
+    int shots = (int)(AccessTools.Field(t, "_currentShotQuota")
+                        ?.GetValue(__instance) ?? 0);
+    float impact = (float)(AccessTools.Property(t, "TimeUntilImpactSeconds")
+                            ?.GetValue(__instance) ?? 0f);
+
+    // Branch by call source
+    var source = CallerDetector.Detect();
+    string msg;
+    if (source == CallerDetector.CallSource.Planned)
+    {
+        string teamStr = PlannedMissionContext.TryGet(out var f) ? f.ToString() : "Unknown";
+        msg = $"Planned fires ({teamStr}): {shots} rounds {shell_type}, " +
+              $"{(int)Math.Ceiling(impact)}s to impact.";
+    }
+    else
+    {
+        msg = $"Battalion FSO: Executing fire suppression mission — " +
+              $"{shots} rounds {shell_type}, " +
+              $"{(int)Math.Ceiling(impact)} seconds time to target.{random_message}";
+    }
+
+    try
+    {
         _addAlertMethod.Invoke(hud, new object[] { msg, 4f });
         MelonLogger.Msg($"[Alert] Sent: {msg}");
-      } catch (Exception e) {
+    }
+    catch (Exception e)
+    {
         MelonLogger.Msg($"[Alert-warn] AddAlertMessage threw: " +
                         $"{e.InnerException?.Message ?? e.Message}");
-      }
     }
+}
   }
   [HarmonyPatch]
   public static class Patch_ArtilleryBattery_SendFireMission_ApplyMultipliers {
@@ -369,32 +487,50 @@ namespace GHPC_Artillery_Rework {
         AccessTools.TypeByName("GHPC.Weapons.Artillery.ArtilleryBattery"),
         "_randomDispersionRadiusMeters");
 
-    static void Prefix(object __instance, ref float delaySeconds,
-                       ref int roundCount, ref float radiusMeters, ref float secondsBetweenRounds) {
-      int volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume, 1, 15);
-      int ttMult =
-          GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler, 1, 10);
-      int accMult =
-          GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier, 1, 10);
+   static void Prefix(object __instance, ref float delaySeconds,
+                   ref int roundCount, ref float radiusMeters,
+                   ref float secondsBetweenRounds)
+{
+    var source = CallerDetector.Detect();
 
-      if (roundCount < 0)
-        roundCount = (int)_shotsF.GetValue(__instance);
-      roundCount *= volMult;
+    int volMult, ttMult, accMult;
+    switch (source)
+    {
+        case CallerDetector.CallSource.OnCall:
+            volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume, 1, 15);
+            ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler, 1, 10);
+            accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier, 1, 10);
+            break;
 
-      if (secondsBetweenRounds < 0f)
-        secondsBetweenRounds = (float)_interShotDelayF.GetValue(__instance);
-      secondsBetweenRounds /= volMult;
+        case CallerDetector.CallSource.Planned:
+            volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedVolume, 1, 15);
+            ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedTimeToTargetMultipler, 1, 10);
+            accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedAccuracyMultiplier, 1, 10);
+            break;
 
-      if (radiusMeters < 0f)
-        radiusMeters = (float)_dispersionF.GetValue(__instance);
-      radiusMeters /= accMult;
-
-      delaySeconds /= ttMult;
-
-      MelonLogger.Msg($"[ArtyMult] rounds×{volMult}={roundCount}, " +
-                      $"delay÷{ttMult}={delaySeconds:F1}s, " +
-                      $"radius÷{accMult}={radiusMeters:F1}m");
+        default:
+            return;
     }
+
+    if (roundCount < 0)
+        roundCount = (int)_shotsF.GetValue(__instance);
+    roundCount *= volMult;
+
+    if (secondsBetweenRounds < 0f)
+        secondsBetweenRounds = (float)_interShotDelayF.GetValue(__instance);
+    secondsBetweenRounds /= volMult;
+
+    if (radiusMeters < 0f)
+        radiusMeters = (float)_dispersionF.GetValue(__instance);
+    radiusMeters /= accMult;
+
+    delaySeconds /= ttMult;
+
+    MelonLogger.Msg($"[ArtyMult-{source}] rounds×{volMult}={roundCount}, " +
+                    $"interShot÷{volMult}={secondsBetweenRounds:F2}s, " +
+                    $"delay÷{ttMult}={delaySeconds:F1}s, " +
+                    $"radius÷{accMult}={radiusMeters:F1}m");
+}
   }
 
 }
