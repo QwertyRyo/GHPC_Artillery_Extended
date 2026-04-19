@@ -1,6 +1,6 @@
 # GHPC_Artillery_Rework for Gunner HEAT PC!
 
-Version 1.0.0 of GHPC_Artillery_Rework in Gunner HEAT PC. 
+Version 1.0.1 of GHPC_Artillery_Rework in Gunner HEAT PC. 
 Features:
 - Allows users to increase the volume of artillery fire, decrease time it takes for shells to land and increase artillery accuracy.
 - Allows users to cancel fire missions early by clicking on the associated fire mission button.
@@ -25,5 +25,5 @@ Programming: Qwertyryo
 
 
 **Changelog**  
-1.0.0 - Base release  
-
+1.0.1 - Base release  
+1.0.1 - Added in custom hud text for enemy/friendly AI called artillery missions, fixed a bug causing squared volume multipliers, added decimal multiplier support, can now tweak AI vs Player-called artillery missions individually.

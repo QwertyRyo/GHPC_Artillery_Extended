@@ -6,6 +6,8 @@ using GHPC.Event;
 using System.Collections.Generic;
 using System;
 using GHPC;
+using GHPC.Mission;
+using GHPC.Player;
 using GHPC.Event.Interfaces;
 using UnityEngine;
 using System.Reflection;
@@ -15,18 +17,20 @@ using GHPC.Weapons.Artillery;
 using GHPC.Weaponry.Artillery;
 using GHPC.Weaponry;
 using GHPC.Weapons;
+using GHPC.Campaign.Data;
+using GHPC.Mission.Data.Campaign;
 [assembly:MelonInfo(typeof(GHPC_Artillery_Rework.GHPC_Arty_Class),
-                    "GHPC Artillery Rework", "1.0.0", "Qwertyryo")]
+                    "GHPC Artillery Rework", "1.0.1", "Qwertyryo")]
 [assembly:MelonGame("Radian Simulations LLC", "GHPC")]
 
 namespace GHPC_Artillery_Rework {
   public class GHPC_Arty_Class : MelonMod {
-    public static MelonPreferences_Entry<int> volume;
-    public static MelonPreferences_Entry<int> timeToTargetMultipler;
-    public static MelonPreferences_Entry<int> accuracyMultiplier;
-    public static MelonPreferences_Entry<int> plannedVolume;
-    public static MelonPreferences_Entry<int> plannedTimeToTargetMultipler;
-  public static MelonPreferences_Entry<int> plannedAccuracyMultiplier;
+    public static MelonPreferences_Entry<float> volume;
+    public static MelonPreferences_Entry<float> timeToTargetMultipler;
+    public static MelonPreferences_Entry<float> accuracyMultiplier;
+    public static MelonPreferences_Entry<float> plannedVolume;
+    public static MelonPreferences_Entry<float> plannedTimeToTargetMultipler;
+  public static MelonPreferences_Entry<float> plannedAccuracyMultiplier;
 
 
     public override void OnInitializeMelon() {
@@ -34,41 +38,38 @@ namespace GHPC_Artillery_Rework {
       MelonPreferences_Category cfg =
           MelonPreferences.CreateCategory("GHPC Artillery Rework");
 
-      volume = cfg.CreateEntry<int>("Artillery volume multiplier", 1);
+      volume = cfg.CreateEntry<float>("Artillery volume multiplier", 1f);
       volume.Comment =
-          "Set the volume multiplier for artillery rounds. 1 is default, 2 is double the amount of shells, etc. Supports integers from 1 to 15, but not great for your PC past 5.";
+          "Set the volume multiplier for artillery rounds. 1 is default, 2 is double the amount of shells, etc. Not great for your PC past 5.";
 
       timeToTargetMultipler =
-          cfg.CreateEntry<int>("Time to target multiplier", 1);
+          cfg.CreateEntry<float>("Time to target multiplier", 1f);
       timeToTargetMultipler.Comment =
-          "Set the multiplier for speed time to target. 1 is default, 2 means shells will hit the target in half the time, etc. Supports integers from 1 to 10.";
+          "Set the multiplier for speed time to target. 1 is default, 2 means shells will hit the target in half the time, etc.";
 
-      accuracyMultiplier = cfg.CreateEntry<int>("Accuracy multiplier", 1);
+      accuracyMultiplier = cfg.CreateEntry<float>("Accuracy multiplier", 1f);
       accuracyMultiplier.Comment =
-          "Set the multiplier for artillery accuracy. 1 is default, 2 means shells will be twice as accurate, etc. Supports integers from 1 to 10.";
-              plannedVolume = cfg.CreateEntry<int>("Planned artillery volume multiplier", 1);
-    plannedVolume.Comment = "Volume multiplier for PLANNED fire missions. " +
-                            "Supports integers from 1 to 15.";
+          "Set the multiplier for artillery accuracy. 1 is default, 2 means shells will be twice as accurate, etc.";
+              plannedVolume = cfg.CreateEntry<float>("Planned artillery volume multiplier", 1f);
+    plannedVolume.Comment = "Volume multiplier for AI fire missions.";
 
-    plannedTimeToTargetMultipler = cfg.CreateEntry<int>(
-        "Planned time to target multiplier", 1);
-    plannedTimeToTargetMultipler.Comment = "Time-to-target multiplier for PLANNED " +
-                                           "fire missions. Supports integers from 1 to 10.";
+    plannedTimeToTargetMultipler = cfg.CreateEntry<float>(
+        "Planned time to target multiplier", 1f);
+    plannedTimeToTargetMultipler.Comment = "Time-to-target multiplier for AI fire missions.";
 
-    plannedAccuracyMultiplier = cfg.CreateEntry<int>(
-        "Planned accuracy multiplier", 1);
-    plannedAccuracyMultiplier.Comment = "Accuracy multiplier for PLANNED fire missions. " +
-                                        "Supports integers from 1 to 10.";
+    plannedAccuracyMultiplier = cfg.CreateEntry<float>(
+        "Planned accuracy multiplier", 1f);
+    plannedAccuracyMultiplier.Comment = "Accuracy multiplier for AI fire missions.";
 
 
       var harmony = new HarmonyLib.Harmony("GHPC_Artillery_Rework");
       harmony.PatchAll();
     }
-    public static int Clamped(MelonPreferences_Entry<int> entry, int min,
-                              int max, int fallback = 1) {
+    public static float Clamped(MelonPreferences_Entry<float> entry, float min,
+                               float max, float fallback = 1f) {
       if (entry == null)
         return fallback;
-      int v = entry.Value;
+      float v = entry.Value;
       return (v < min || v > max) ? fallback : v;
     }
   }
@@ -128,6 +129,53 @@ public static CallSource Detect()
     public static void Remove(MapIconControlType btn) => _store.Remove(btn);
     public static void Clear() => _store.Clear();
   }
+
+public static class PlayerAllegianceStore
+{
+    public static string Name { get; set; } = "Unknown";
+    public static Faction? Current { get; set; }  
+    
+    public static bool HasValue => Current.HasValue;
+
+}
+[HarmonyPatch]
+public static class Patch_Campaign_LaunchDynamicMissionFaction
+  {
+    static MethodBase TargetMethod()
+    {
+        var type = AccessTools.TypeByName("GHPC.Mission.DynamicMissionLauncher");
+        return AccessTools.Method(type, "LaunchDynamicMission");
+    }
+    static void Postfix()
+{
+    var allegiance = DynamicMissionComposer.MissionData.PlayerTeam;
+    PlayerAllegianceStore.Current = allegiance;
+    PlayerAllegianceStore.Name = allegiance.ToString();
+    //MelonLogger.Msg($"[Allegiance] Captured: {PlayerAllegianceStore.Name}");
+
+}
+  }
+  
+[HarmonyPatch]
+public static class Patch_MapController_InitControlState
+{
+    static MethodBase TargetMethod()
+    {
+        var type = AccessTools.TypeByName("GHPC.UI.MapController");
+        return AccessTools.Method(type, "InitControlState");
+    }
+
+    static void Postfix()
+{
+    var allegiance = PlayerInput.Instance?.CurrentPlayerUnit?.Allegiance;
+    if (allegiance.HasValue)
+    {
+        PlayerAllegianceStore.Current = allegiance.Value;
+        PlayerAllegianceStore.Name = allegiance.Value.ToString();
+        //MelonLogger.Msg($"[Allegiance] Captured: {PlayerAllegianceStore.Name}");
+    }
+}
+}
 
   [HarmonyPatch]
 public static class Patch_FireMissionManager_SendFireMissionPlanned
@@ -208,11 +256,11 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
           continue;
 
         FiringIdStore.Set(__instance, reporter);
-        MelonLogger.Msg($"[FiringId] {__instance.SupportName} " +
+        /*MelonLogger.Msg($"[FiringId] {__instance.SupportName} " +
                         $"(btn#{__instance.GetInstanceID()}): " +
                         $"captured reporter {reporter.GetType().Name}" +
                         $"#{reporter.GetHashCode():X8} at idx={i}, " +
-                        $"listSize={list.Count}");
+                        $"listSize={list.Count}");*/
         return;
       }
 
@@ -444,13 +492,21 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
     string msg;
     if (source == CallerDetector.CallSource.Planned)
     {
-        string teamStr = PlannedMissionContext.TryGet(out var f) ? f.ToString() : "Unknown";
-        msg = $"Planned fires ({teamStr}): {shots} rounds {shell_type}, " +
+      
+      string teamStr = PlannedMissionContext.TryGet(out var f) ? f.ToString() : "Unknown";
+      if (PlayerAllegianceStore.HasValue && teamStr == PlayerAllegianceStore.Name)
+        {
+          msg = $"Battalion FSO: Executing fire mission of {shots} rounds {shell_type}, " +
               $"{(int)Math.Ceiling(impact)}s to impact.";
+        }
+        else
+        {
+          msg = $"SIGINT is reporting an enemy fire mission inbound, {shots} rounds {shell_type}, " + $"{(int)Math.Ceiling(impact)}s to impact.";
+        }
     }
     else
     {
-        msg = $"Battalion FSO: Executing fire suppression mission — " +
+        msg = $"Battalion FSO: Executing fire mission on your target — " +
               $"{shots} rounds {shell_type}, " +
               $"{(int)Math.Ceiling(impact)} seconds time to target.{random_message}";
     }
@@ -458,12 +514,13 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
     try
     {
         _addAlertMethod.Invoke(hud, new object[] { msg, 4f });
-        MelonLogger.Msg($"[Alert] Sent: {msg}");
+        //MelonLogger.Msg($"[Alert] Sent: {msg}");
     }
     catch (Exception e)
     {
         MelonLogger.Msg($"[Alert-warn] AddAlertMessage threw: " +
                         $"{e.InnerException?.Message ?? e.Message}");
+
     }
 }
   }
@@ -487,50 +544,60 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
         AccessTools.TypeByName("GHPC.Weapons.Artillery.ArtilleryBattery"),
         "_randomDispersionRadiusMeters");
 
-   static void Prefix(object __instance, ref float delaySeconds,
+    private static bool _multiplierApplied = false;
+
+    static void Prefix(object __instance, ref float delaySeconds,
                    ref int roundCount, ref float radiusMeters,
                    ref float secondsBetweenRounds)
-{
-    var source = CallerDetector.Detect();
-
-    int volMult, ttMult, accMult;
-    switch (source)
     {
-        case CallerDetector.CallSource.OnCall:
-            volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume, 1, 15);
-            ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler, 1, 10);
-            accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier, 1, 10);
-            break;
+        if (_multiplierApplied) { //MelonLogger.Msg("[ArtyMult] Skipping re-entrant call"); 
+        
+        return; }
 
-        case CallerDetector.CallSource.Planned:
-            volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedVolume, 1, 15);
-            ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedTimeToTargetMultipler, 1, 10);
-            accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedAccuracyMultiplier, 1, 10);
-            break;
+        var source = CallerDetector.Detect();
 
-        default:
-            return;
+        float volMult, ttMult, accMult;
+        switch (source)
+        {
+            case CallerDetector.CallSource.OnCall:
+                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume, 0.1f, 15f);
+                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler, 0.1f, 10f);
+                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier, 0.1f, 10f);
+                break;
+
+            case CallerDetector.CallSource.Planned:
+                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedVolume, 0.1f, 15f);
+                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedTimeToTargetMultipler, 0.1f, 10f);
+                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedAccuracyMultiplier, 0.1f, 10f);
+                break;
+
+            default:
+                return;
+        }
+
+        _multiplierApplied = true;
+
+        if (roundCount < 0)
+            roundCount = (int)_shotsF.GetValue(__instance);
+        roundCount = (int)(roundCount * volMult);
+
+        if (secondsBetweenRounds < 0f)
+            secondsBetweenRounds = (float)_interShotDelayF.GetValue(__instance);
+        secondsBetweenRounds /= volMult;
+
+        if (radiusMeters < 0f)
+            radiusMeters = (float)_dispersionF.GetValue(__instance);
+        radiusMeters /= accMult;
+
+        delaySeconds /= ttMult;
+
+        /*MelonLogger.Msg($"[ArtyMult-{source}] rounds×{volMult}={roundCount}, " +
+                        $"interShot÷{volMult}={secondsBetweenRounds:F2}s, " +
+                        $"delay÷{ttMult}={delaySeconds:F1}s, " +
+                        $"radius÷{accMult}={radiusMeters:F1}m");*/
     }
 
-    if (roundCount < 0)
-        roundCount = (int)_shotsF.GetValue(__instance);
-    roundCount *= volMult;
-
-    if (secondsBetweenRounds < 0f)
-        secondsBetweenRounds = (float)_interShotDelayF.GetValue(__instance);
-    secondsBetweenRounds /= volMult;
-
-    if (radiusMeters < 0f)
-        radiusMeters = (float)_dispersionF.GetValue(__instance);
-    radiusMeters /= accMult;
-
-    delaySeconds /= ttMult;
-
-    MelonLogger.Msg($"[ArtyMult-{source}] rounds×{volMult}={roundCount}, " +
-                    $"interShot÷{volMult}={secondsBetweenRounds:F2}s, " +
-                    $"delay÷{ttMult}={delaySeconds:F1}s, " +
-                    $"radius÷{accMult}={radiusMeters:F1}m");
-}
+    static void Finalizer() => _multiplierApplied = false;
   }
 
 }
