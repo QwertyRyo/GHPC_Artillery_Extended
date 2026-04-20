@@ -11,7 +11,8 @@ Planned Content:
 - Will allow users to customize artillery and smoke separately.
   
 Known Bugs:
-  
+- Flares are listed as WP
+- 
 ***Installation***  
 This mod requires MelonLoader Version 0.6.1.
 
