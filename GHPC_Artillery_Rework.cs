@@ -65,12 +65,11 @@ namespace GHPC_Artillery_Rework {
       var harmony = new HarmonyLib.Harmony("GHPC_Artillery_Rework");
       harmony.PatchAll();
     }
-    public static float Clamped(MelonPreferences_Entry<float> entry, float min,
-                               float max, float fallback = 1f) {
+    public static float Clamped(MelonPreferences_Entry<float> entry, float fallback = 1f) {
       if (entry == null)
         return fallback;
       float v = entry.Value;
-      return (v < min || v > max) ? fallback : v;
+      return v > 0f ? v : fallback;
     }
   }
 
@@ -560,15 +559,15 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
         switch (source)
         {
             case CallerDetector.CallSource.OnCall:
-                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume, 0.1f, 15f);
-                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler, 0.1f, 10f);
-                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier, 0.1f, 10f);
+                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume);
+                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler);
+                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier);
                 break;
 
             case CallerDetector.CallSource.Planned:
-                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedVolume, 0.1f, 15f);
-                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedTimeToTargetMultipler, 0.1f, 10f);
-                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedAccuracyMultiplier, 0.1f, 10f);
+                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedVolume);
+                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedTimeToTargetMultipler);
+                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedAccuracyMultiplier);
                 break;
 
             default:
