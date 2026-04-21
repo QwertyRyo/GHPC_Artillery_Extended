@@ -25,6 +25,9 @@ Programming: Qwertyryo
 
 **Changelog**  
 1.0.1 - Base release  
+
 1.0.1 - Added in custom hud text for enemy/friendly AI called artillery missions, fixed a bug causing squared volume multipliers, added decimal multiplier support, can now tweak AI vs Player-called artillery missions individually.
+
 1.0.2 - Fixed bug limiting multiplier size to 15
+
 1.1.0 - Added ability to customize shell types individually
