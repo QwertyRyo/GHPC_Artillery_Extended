@@ -20,50 +20,72 @@ using GHPC.Weapons;
 using GHPC.Campaign.Data;
 using GHPC.Mission.Data.Campaign;
 [assembly:MelonInfo(typeof(GHPC_Artillery_Rework.GHPC_Arty_Class),
-                    "GHPC Artillery Rework", "1.0.1", "Qwertyryo")]
+                    "GHPC Artillery Rework", "1.1.0", "Qwertyryo")]
 [assembly:MelonGame("Radian Simulations LLC", "GHPC")]
 
 namespace GHPC_Artillery_Rework {
   public class GHPC_Arty_Class : MelonMod {
-    public static MelonPreferences_Entry<float> volume;
-    public static MelonPreferences_Entry<float> timeToTargetMultipler;
-    public static MelonPreferences_Entry<float> accuracyMultiplier;
-    public static MelonPreferences_Entry<float> plannedVolume;
-    public static MelonPreferences_Entry<float> plannedTimeToTargetMultipler;
-  public static MelonPreferences_Entry<float> plannedAccuracyMultiplier;
-
+    // HE — OnCall
+    public static MelonPreferences_Entry<float> heVolume;
+    public static MelonPreferences_Entry<float> heTimeToTarget;
+    public static MelonPreferences_Entry<float> heAccuracy;
+    // HE — Planned
+    public static MelonPreferences_Entry<float> hePlannedVolume;
+    public static MelonPreferences_Entry<float> hePlannedTimeToTarget;
+    public static MelonPreferences_Entry<float> hePlannedAccuracy;
+    // Smoke — OnCall
+    public static MelonPreferences_Entry<float> smokeVolume;
+    public static MelonPreferences_Entry<float> smokeTimeToTarget;
+    public static MelonPreferences_Entry<float> smokeAccuracy;
+    // Smoke — Planned
+    public static MelonPreferences_Entry<float> smokePlannedVolume;
+    public static MelonPreferences_Entry<float> smokePlannedTimeToTarget;
+    public static MelonPreferences_Entry<float> smokePlannedAccuracy;
+    // Illumination — OnCall
+    public static MelonPreferences_Entry<float> illuVolume;
+    public static MelonPreferences_Entry<float> illuTimeToTarget;
+    public static MelonPreferences_Entry<float> illuAccuracy;
+    // Illumination — Planned
+    public static MelonPreferences_Entry<float> illuPlannedVolume;
+    public static MelonPreferences_Entry<float> illuPlannedTimeToTarget;
+    public static MelonPreferences_Entry<float> illuPlannedAccuracy;
 
     public override void OnInitializeMelon() {
-      MelonLogger.Msg("GHPC Artillery Rework initialized.");
-      MelonPreferences_Category cfg =
-          MelonPreferences.CreateCategory("GHPC Artillery Rework");
+      MelonLogger.Msg("GHPC Artillery Extended initialized.");
 
-      volume = cfg.CreateEntry<float>("Artillery volume multiplier", 1f);
-      volume.Comment =
-          "Set the volume multiplier for artillery rounds. 1 is default, 2 is double the amount of shells, etc. Not great for your PC past 5.";
+      MelonPreferences_Category cfg = MelonPreferences.CreateCategory("GHPC Artillery Extended");
+      heVolume          = cfg.CreateEntry<float>("HE OnCall volume multiplier", 1f);
+      heVolume.Comment = "There are two types of artillery in GHPC; OnCall, which occurs with player input, and planned, which happens automatically. Volume multiplier increases the amount of shells fired - Set 2.5 for 2.5x the amount of shells.Time-to-target multiplier decreases the time it takes for shells to arrive. Set to 2.0 for half the time-to-target. Accuracy affects the dispersion radius of the shells, set to a higher number for tighter firing patterns.";
 
-      timeToTargetMultipler =
-          cfg.CreateEntry<float>("Time to target multiplier", 1f);
-      timeToTargetMultipler.Comment =
-          "Set the multiplier for speed time to target. 1 is default, 2 means shells will hit the target in half the time, etc.";
+      heTimeToTarget    = cfg.CreateEntry<float>("HE OnCall time-to-target multiplier", 1f);
+      heAccuracy        = cfg.CreateEntry<float>("HE OnCall accuracy multiplier", 1f);
+      hePlannedVolume   = cfg.CreateEntry<float>("HE Planned volume multiplier", 1f);
+      hePlannedTimeToTarget = cfg.CreateEntry<float>("HE Planned time-to-target multiplier", 1f);
+      hePlannedAccuracy = cfg.CreateEntry<float>("HE Planned accuracy multiplier", 1f);
 
-      accuracyMultiplier = cfg.CreateEntry<float>("Accuracy multiplier", 1f);
-      accuracyMultiplier.Comment =
-          "Set the multiplier for artillery accuracy. 1 is default, 2 means shells will be twice as accurate, etc.";
-              plannedVolume = cfg.CreateEntry<float>("Planned artillery volume multiplier", 1f);
-    plannedVolume.Comment = "Volume multiplier for AI fire missions.";
+      smokeVolume          = cfg.CreateEntry<float>("Smoke OnCall volume multiplier", 1f);
+      smokeTimeToTarget    = cfg.CreateEntry<float>("Smoke OnCall time-to-target multiplier", 1f);
+      smokeAccuracy        = cfg.CreateEntry<float>("Smoke OnCall accuracy multiplier", 1f);
+      smokePlannedVolume   = cfg.CreateEntry<float>("Smoke Planned volume multiplier", 1f);
+      smokePlannedTimeToTarget = cfg.CreateEntry<float>("Smoke Planned time-to-target multiplier", 1f);
+      smokePlannedAccuracy = cfg.CreateEntry<float>("Smoke Planned accuracy multiplier", 1f);
 
-    plannedTimeToTargetMultipler = cfg.CreateEntry<float>(
-        "Planned time to target multiplier", 1f);
-    plannedTimeToTargetMultipler.Comment = "Time-to-target multiplier for AI fire missions.";
+      illuVolume          = cfg.CreateEntry<float>("Illumination OnCall volume multiplier", 1f);
+      illuTimeToTarget    = cfg.CreateEntry<float>("Illumination OnCall time-to-target multiplier", 1f);
+      illuAccuracy        = cfg.CreateEntry<float>("Illumination OnCall accuracy multiplier", 1f);
+      illuPlannedVolume   = cfg.CreateEntry<float>("Illumination Planned volume multiplier", 1f);
+      illuPlannedTimeToTarget = cfg.CreateEntry<float>("Illumination Planned time-to-target multiplier", 1f);
+      illuPlannedAccuracy = cfg.CreateEntry<float>("Illumination Planned accuracy multiplier", 1f);
 
-    plannedAccuracyMultiplier = cfg.CreateEntry<float>(
-        "Planned accuracy multiplier", 1f);
-    plannedAccuracyMultiplier.Comment = "Accuracy multiplier for AI fire missions.";
-
-
-      var harmony = new HarmonyLib.Harmony("GHPC_Artillery_Rework");
-      harmony.PatchAll();
+      MelonPreferences.Save();
+      MelonLogger.Msg("[ArtilleryExtended] Preferences created, applying patches...");
+      try {
+        var harmony = new HarmonyLib.Harmony("GHPC_Artillery_Rework");
+        harmony.PatchAll();
+        MelonLogger.Msg("[ArtilleryExtended] PatchAll complete.");
+      } catch (Exception e) {
+        MelonLogger.Msg($"[ArtilleryExtended] PatchAll failed: {e}");
+      }
     }
     public static float Clamped(MelonPreferences_Entry<float> entry, float fallback = 1f) {
       if (entry == null)
@@ -456,10 +478,21 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
     ResolveOnce();
     if (_instanceProp == null || _addAlertMethod == null) return;
 
-    var currentMunitions = (BatteryMunitionsChoice)AccessTools
-        .Field(typeof(ArtilleryBattery), "_currentMunitions").GetValue(__instance);
+    string shell_type = preferredMunitions.ToString();
+    switch (shell_type)
+      {
+        case "AntiPersonnel":
+          shell_type = "HE";
+          break;
+        case "AntiArmor":
+          shell_type = "HE";
+          break;
+        case "Smoke":
+          shell_type = "WP";
+          break;
 
-    string shell_type = "HE";
+      }
+
     string random_message = new[] {
         " This is gonna be a big one.",
         " Stand clear.",
@@ -467,15 +500,10 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
         " Clean up anyone who's left after this.",
         " Sit back and watch the fireworks.",
         " Those bitches have no idea what's coming.",
-        " Get some, motherfuckers!",
+        " Get some!",
         " Eat shit and die, motherfuckers!"
     }[UnityEngine.Random.Range(0, 8)];
-
-    if (currentMunitions.Ammo?.AmmoType == null)
-    {
-        shell_type = "WP";
-        random_message = "";
-    }
+    if (shell_type != "HE") random_message = "";
 
     var hud = _instanceProp.GetValue(null);
     if (hud == null) return;
@@ -547,31 +575,32 @@ public static class Patch_FireMissionManager_SendFireMissionPlanned
 
     static void Prefix(object __instance, ref float delaySeconds,
                    ref int roundCount, ref float radiusMeters,
-                   ref float secondsBetweenRounds)
+                   ref float secondsBetweenRounds, ref IndirectFireMunitionType preferredMunitions)
     {
         if (_multiplierApplied) { //MelonLogger.Msg("[ArtyMult] Skipping re-entrant call"); 
         
         return; }
 
         var source = CallerDetector.Detect();
+        if (source == CallerDetector.CallSource.Unknown) return;
+
+        bool planned = source == CallerDetector.CallSource.Planned;
+        bool isSmoke = preferredMunitions == IndirectFireMunitionType.Smoke;
+        bool isIllu  = preferredMunitions == IndirectFireMunitionType.Illumination;
 
         float volMult, ttMult, accMult;
-        switch (source)
-        {
-            case CallerDetector.CallSource.OnCall:
-                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.volume);
-                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.timeToTargetMultipler);
-                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.accuracyMultiplier);
-                break;
-
-            case CallerDetector.CallSource.Planned:
-                volMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedVolume);
-                ttMult  = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedTimeToTargetMultipler);
-                accMult = GHPC_Arty_Class.Clamped(GHPC_Arty_Class.plannedAccuracyMultiplier);
-                break;
-
-            default:
-                return;
+        if (isSmoke) {
+            volMult = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.smokePlannedVolume   : GHPC_Arty_Class.smokeVolume);
+            ttMult  = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.smokePlannedTimeToTarget : GHPC_Arty_Class.smokeTimeToTarget);
+            accMult = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.smokePlannedAccuracy  : GHPC_Arty_Class.smokeAccuracy);
+        } else if (isIllu) {
+            volMult = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.illuPlannedVolume   : GHPC_Arty_Class.illuVolume);
+            ttMult  = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.illuPlannedTimeToTarget : GHPC_Arty_Class.illuTimeToTarget);
+            accMult = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.illuPlannedAccuracy  : GHPC_Arty_Class.illuAccuracy);
+        } else {
+            volMult = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.hePlannedVolume   : GHPC_Arty_Class.heVolume);
+            ttMult  = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.hePlannedTimeToTarget : GHPC_Arty_Class.heTimeToTarget);
+            accMult = GHPC_Arty_Class.Clamped(planned ? GHPC_Arty_Class.hePlannedAccuracy  : GHPC_Arty_Class.heAccuracy);
         }
 
         _multiplierApplied = true;
