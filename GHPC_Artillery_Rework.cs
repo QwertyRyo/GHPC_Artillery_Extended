@@ -20,7 +20,7 @@ using GHPC.Weapons;
 using GHPC.Campaign.Data;
 using GHPC.Mission.Data.Campaign;
 [assembly:MelonInfo(typeof(GHPC_Artillery_Rework.GHPC_Arty_Class),
-                    "GHPC Artillery Rework", "1.1.0", "Qwertyryo")]
+                    "GHPC Artillery Rework", "1.1.1", "Qwertyryo")]
 [assembly:MelonGame("Radian Simulations LLC", "GHPC")]
 
 namespace GHPC_Artillery_Rework {
