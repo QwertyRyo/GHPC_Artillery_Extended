@@ -4,11 +4,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("GHPC_Artillery_Extended")]
+[assembly: AssemblyTitle("GHPC_Artillery_Rework")]
 [assembly: AssemblyDescription("A mod for GHPC that adds artillery features.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Qwertyryo")]
-[assembly: AssemblyProduct("GHPC_Artillery_Extended")]
+[assembly: AssemblyProduct("GHPC_Artillery_Rework")]
 [assembly: AssemblyCopyright("Copyright ©  2026")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

@@ -51,9 +51,9 @@ namespace GHPC_Artillery_Rework {
     public static MelonPreferences_Entry<float> illuPlannedAccuracy;
 
     public override void OnInitializeMelon() {
-      MelonLogger.Msg("GHPC Artillery Extended initialized.");
+      MelonLogger.Msg("GHPC Artillery Rework initialized.");
 
-      MelonPreferences_Category cfg = MelonPreferences.CreateCategory("GHPC Artillery Extended");
+      MelonPreferences_Category cfg = MelonPreferences.CreateCategory("GHPC Artillery Rework");
       heVolume          = cfg.CreateEntry<float>("HE OnCall volume multiplier", 1f);
       heVolume.Comment = "There are two types of artillery in GHPC; OnCall, which occurs with player input, and planned, which happens automatically. Volume multiplier increases the amount of shells fired - Set 2.5 for 2.5x the amount of shells.Time-to-target multiplier decreases the time it takes for shells to arrive. Set to 2.0 for half the time-to-target. Accuracy affects the dispersion radius of the shells, set to a higher number for tighter firing patterns.";
 
@@ -78,13 +78,13 @@ namespace GHPC_Artillery_Rework {
       illuPlannedAccuracy = cfg.CreateEntry<float>("Illumination Planned accuracy multiplier", 1f);
 
       MelonPreferences.Save();
-      MelonLogger.Msg("[ArtilleryExtended] Preferences created, applying patches...");
+      MelonLogger.Msg("[ArtilleryRework] Preferences created, applying patches...");
       try {
         var harmony = new HarmonyLib.Harmony("GHPC_Artillery_Rework");
         harmony.PatchAll();
-        MelonLogger.Msg("[ArtilleryExtended] PatchAll complete.");
+        MelonLogger.Msg("[ArtilleryRework] PatchAll complete.");
       } catch (Exception e) {
-        MelonLogger.Msg($"[ArtilleryExtended] PatchAll failed: {e}");
+        MelonLogger.Msg($"[ArtilleryRework] PatchAll failed: {e}");
       }
     }
     public static float Clamped(MelonPreferences_Entry<float> entry, float fallback = 1f) {
