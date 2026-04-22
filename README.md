@@ -30,4 +30,6 @@ Programming: Qwertyryo
 
 1.0.2 - Fixed bug limiting multiplier size to 15
 
-1.1.1 - Added ability to customize shell types individually
+1.1.0 - Added ability to customize shell types individually
+
+1.1.1 - Fixed naming issues
